@@ -1,10 +1,10 @@
-
+```html
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Jabbar Market </title>
+    <title>صيدليات جبار - المتجر الذكي</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
@@ -217,7 +217,8 @@
                 <div class="flex gap-2 w-full overflow-x-auto hide-scroll pb-1">
                     <button onclick="setBrandFilter(null)" id="filter-all-btn" class="brand-chip active shrink-0">الكل</button>
                     <button onclick="toggleOffersFilter(!state.showOffersOnly)" id="filter-offers-btn" class="brand-chip inactive shrink-0 font-black"><i class="ph-fill ph-fire text-accent text-lg"></i> عروض حصرية</button>
-                    <div id="dynamic-filters-container" class="flex gap-2 shrink-0"></div>
+                    <!-- الفلاتر الديناميكية والبراندات -->
+                    <div id="dynamic-filters-container" class="flex gap-2 shrink-0 items-center"></div>
                 </div>
             </div>
 
@@ -366,7 +367,7 @@
                     <div class="flex justify-between items-center bg-white p-4 rounded-xl border border-slate-200 shadow-sm"><span class="text-sm font-bold text-slate-500" id="admin-pagination-info">عرض 0 من 0</span><div class="flex gap-2"><button onclick="changeAdminPage(-1)" id="admin-prev-btn" class="px-4 py-2 bg-slate-100 text-slate-600 rounded-lg font-bold hover:bg-slate-200 disabled:opacity-50 disabled:cursor-not-allowed">السابق</button><button onclick="changeAdminPage(1)" id="admin-next-btn" class="px-4 py-2 bg-slate-900 text-white rounded-lg font-bold hover:bg-slate-800 disabled:opacity-50 disabled:cursor-not-allowed">التالي</button></div></div>
                 </div>
 
-                <!-- Admin Brands (NEW) -->
+                <!-- Admin Brands -->
                 <div id="admin-brands" class="admin-view hidden-view animate-fade-in max-w-7xl mx-auto">
                     <h3 class="text-2xl font-black text-slate-900 mb-6 border-r-4 border-primary pr-3">إدارة العلامات التجارية (لوجوهات البراندات)</h3>
                     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -544,13 +545,12 @@
             currentUser: JSON.parse(localStorage.getItem('jabbarUser')) || null, cart: loadedCart,
             products: {}, orders: {}, customers: {}, admins: {}, offers: {}, settings: {}, banners: {}, brandData: {},
             selectedProducts: new Set(), showOffersOnly: false, currentBrandFilter: null, clientSearchTerm: '',
-            catalogScrollPosition: 0 // لحفظ موضع التمرير
+            catalogScrollPosition: 0
         };
         const CLIENT_ITEMS_PER_PAGE = 24; let clientCurrentPage = 1; let clientFilteredProductsArray = [];
         const ADMIN_ITEMS_PER_PAGE = 50; let adminCurrentPage = 1; let adminFilteredProductsArray = [];
         let currentActiveViewId = 'client-catalog';
 
-        // متغيرات للتحكم في عرض صور المنتج والتكبير
         let pdCurrentImages = [];
         let pdCurrentImgIdx = 0;
 
@@ -570,12 +570,11 @@
         db.ref('orders').on('value', snap => { state.orders = snap.val() || {}; renderAdminOrders(); renderClientOrders(); });
         db.ref('customers').on('value', snap => { state.customers = snap.val() || {}; renderAdminCustomers(); });
         db.ref('banners').on('value', snap => { state.banners = snap.val() || {}; renderClientBanners(); renderAdminBanners(); });
-        db.ref('brandData').on('value', snap => { state.brandData = snap.val() || {}; renderAdminBrands(); renderDynamicFilters(); }); // جديد للبراندات
+        db.ref('brandData').on('value', snap => { state.brandData = snap.val() || {}; renderAdminBrands(); renderDynamicFilters(); }); 
         db.ref('admins').on('value', snap => { state.admins = snap.val() || {}; if(Object.keys(state.admins).length === 0) db.ref('admins/admin').set({name:'المدير العام', code:'admin', password:'admin'}); renderAdminUsers(); });
 
         // --- Navigation ---
         function navigate(viewId) {
-            // حفظ موضع التمرير إذا كنا نغادر صفحة المتجر
             if (currentActiveViewId === 'client-catalog') {
                 state.catalogScrollPosition = window.scrollY;
             }
@@ -587,7 +586,6 @@
             
             if(viewId === 'client-catalog') { 
                 renderClientBanners(); renderDynamicFilters(); renderClientCatalog(); 
-                // استعادة موضع التمرير بدلاً من العودة للأعلى
                 setTimeout(() => window.scrollTo({ top: state.catalogScrollPosition, behavior: 'auto' }), 50);
             } else {
                 window.scrollTo(0,0);
@@ -726,40 +724,43 @@
             const container = document.getElementById('dynamic-filters-container');
             const catsAndBrands = new Set();
             
-            // Collect Brands (Prioritize those with logos) and Categories
             Object.values(state.products).forEach(p => { 
                 if(p.brand) catsAndBrands.add({type: 'brand', name: p.brand});
                 else if (p.category) catsAndBrands.add({type: 'cat', name: p.category});
             });
 
-            // Convert to array and prioritize brands that have logos in state.brandData
             let filterItems = Array.from(catsAndBrands);
             filterItems.sort((a,b) => {
                 const aHasLogo = a.type === 'brand' && state.brandData[a.name]?.logo ? 1 : 0;
                 const bHasLogo = b.type === 'brand' && state.brandData[b.name]?.logo ? 1 : 0;
-                return bHasLogo - aHasLogo; // Logos first
+                return bHasLogo - aHasLogo; 
             });
 
-            // Show top 10 unique filters
             const uniqueNames = new Set();
             let html = '';
             
             for(let item of filterItems) {
-                if(uniqueNames.size >= 10) break;
+                if(uniqueNames.size >= 15) break; // عرض ما يصل إلى 15 فلتر
                 if(!uniqueNames.has(item.name)) {
                     uniqueNames.add(item.name);
                     const isActive = state.currentBrandFilter === item.name && !state.showOffersOnly;
                     const hasOffer = Array.from(Object.values(state.products)).some(p => (p.brand === item.name || p.category === item.name) && getApplicableOffer(p));
                     const offerIcon = hasOffer ? `<i class="ph-fill ph-fire text-accent"></i>` : '';
                     
-                    // إدراج اللوجو إذا كان موجوداً للبراند
-                    let logoImg = '';
+                    // إذا كان للبراند لوجو مسجل، نعرض اللوجو فقط بدون الاسم بحجم كبير وواضح
                     if (item.type === 'brand' && state.brandData[item.name]?.logo) {
-                        logoImg = `<img src="${state.brandData[item.name].logo}" class="w-5 h-5 object-contain rounded-full bg-white border border-slate-200">`;
-                    }
-
-                    if(item.type === 'brand') {
-                        html += `<button onclick="setBrandFilter('${item.name}')" class="brand-chip ${isActive ? 'active' : 'inactive'}">${logoImg} ${item.name} ${offerIcon}</button>`;
+                        const logoUrl = state.brandData[item.name].logo;
+                        const activeClasses = isActive ? 'border-primary border-2 shadow-md bg-slate-50' : 'border-slate-200 bg-white hover:border-primary/50';
+                        
+                        html += `
+                        <button onclick="setBrandFilter('${item.name}')" title="${item.name}" class="shrink-0 px-3 py-1 rounded-xl transition-all border cursor-pointer relative hover:-translate-y-0.5 flex items-center justify-center h-10 min-w-[70px] ${activeClasses}">
+                            <img src="${logoUrl}" class="w-full h-full object-contain mix-blend-multiply" alt="${item.name}">
+                            ${hasOffer ? `<span class="absolute -top-1.5 -left-1.5 bg-white rounded-full w-5 h-5 flex items-center justify-center shadow-sm border border-slate-100"><i class="ph-fill ph-fire text-accent text-xs"></i></span>` : ''}
+                        </button>`;
+                    } 
+                    // إذا لم يكن له لوجو مسجل، يتم عرض الاسم كنص عادي
+                    else if (item.type === 'brand') {
+                        html += `<button onclick="setBrandFilter('${item.name}')" class="brand-chip ${isActive ? 'active' : 'inactive'}">${item.name} ${offerIcon}</button>`;
                     } else {
                         html += `<button onclick="document.getElementById('client-search').value='${item.name}'; handleClientSearch();" class="brand-chip inactive">${item.name} ${offerIcon}</button>`;
                     }
@@ -832,12 +833,11 @@
             const container = e.currentTarget;
             const img = container.querySelector('img');
             const rect = container.getBoundingClientRect();
-            // حساب النسبة المئوية لمكان الماوس
             const x = ((e.clientX - rect.left) / rect.width) * 100;
             const y = ((e.clientY - rect.top) / rect.height) * 100;
             
             img.style.transformOrigin = `${x}% ${y}%`;
-            img.style.transform = 'scale(2.2)'; // تكبير 2.2x
+            img.style.transform = 'scale(2.2)'; 
         }
         function resetImageZoom() {
             const img = document.getElementById('pd-main-img');
@@ -849,7 +849,6 @@
             pdCurrentImgIdx = index;
             document.getElementById('pd-main-img').src = pdCurrentImages[pdCurrentImgIdx];
             
-            // تحديث تحديد الصور المصغرة
             document.querySelectorAll('.thumb-img').forEach((el, i) => {
                 if(i === pdCurrentImgIdx) {
                     el.classList.add('border-primary'); el.classList.remove('border-transparent');
@@ -868,19 +867,15 @@
 
         // --- Smart Similar Products Logic ---
         function getSimilarProducts(product) {
-            // استخراج الكلمات المفتاحية من اسم المنتج (تجاهل الكلمات القصيرة)
             const pTokens = (product.name || '').split(' ').filter(w => w.length > 2).map(w => w.toLowerCase());
             
             const similar = Object.values(state.products)
                 .filter(sp => sp.id !== product.id)
                 .map(sp => {
                     let score = 0;
-                    // تطابق القسم له وزن كبير
                     if(sp.category === product.category) score += 10;
-                    // تطابق البراند له وزن متوسط
                     if(sp.brand && sp.brand === product.brand) score += 5;
                     
-                    // البحث عن تطابق في الكلمات (نفس الاستخدام أو الوصف)
                     const spTokens = (sp.name || '').toLowerCase().split(' ');
                     pTokens.forEach(pt => {
                         if(spTokens.some(spt => spt.includes(pt) || pt.includes(spt))) score += 3;
@@ -888,10 +883,10 @@
                     
                     return { product: sp, score };
                 })
-                .filter(item => item.score > 0) // يجب أن يكون هناك تشابه
-                .sort((a, b) => b.score - a.score) // الترتيب حسب الأعلى تشابهاً
+                .filter(item => item.score > 0) 
+                .sort((a, b) => b.score - a.score) 
                 .map(item => item.product)
-                .slice(0, 5); // أخذ أفضل 5
+                .slice(0, 5); 
 
             return similar;
         }
@@ -901,7 +896,7 @@
             const isAvailable = p.isAvailable !== false;
 
             pdCurrentImages = p.images && p.images.length > 0 ? p.images : (p.image ? [p.image] : ['https://via.placeholder.com/400?text=No+Image']);
-            setMainImage(0); // Setup image and index
+            setMainImage(0); 
 
             document.getElementById('pd-thumbnails').innerHTML = pdCurrentImages.length > 1 ? pdCurrentImages.map((img, idx) => `<img src="${img}" onclick="setMainImage(${idx})" class="thumb-img w-16 h-16 rounded-xl border-2 cursor-pointer object-cover bg-white shadow-sm transition-colors shrink-0 ${idx === 0 ? 'border-primary' : 'border-transparent'} hover:border-primary">`).join('') : '';
             const cbEl = document.getElementById('pd-category-brand'); cbEl.innerText = `${p.category} ${p.brand ? ' | ' + p.brand : ''}`; cbEl.dataset.brand = p.brand || '';
@@ -922,7 +917,6 @@
                 availBadge.classList.remove('hidden');
             }
 
-            // Handle Multiple Offers Display
             const allOffers = isAvailable ? getAllApplicableOffers(p) : [];
             const badgeContainer = document.getElementById('pd-offer-badge-container');
             const badgeText = document.getElementById('pd-offer-text');
@@ -954,7 +948,6 @@
                 offersContainer.classList.add('hidden');
             }
             
-            // Smart Similar Products
             const similar = getSimilarProducts(p);
             document.getElementById('similar-products-grid').innerHTML = similar.map(sp => `<div onclick="openProductDetails('${sp.id}')" class="bg-white p-3 rounded-2xl shadow-sm border border-slate-200 cursor-pointer hover:border-primary transition-colors flex flex-col items-center text-center ${sp.isAvailable===false?'opacity-75':''}"><img src="${(sp.images && sp.images[0]) || sp.image || 'https://via.placeholder.com/150'}" class="h-24 object-contain mb-3 mix-blend-multiply ${sp.isAvailable===false?'grayscale opacity-60':''}"><h4 class="text-xs font-bold text-slate-800 line-clamp-2">${sp.name}</h4><span class="text-slate-900 font-black text-sm mt-2">${sp.price} ج</span>${sp.isAvailable===false?'<span class="text-[10px] mt-1 text-red-500 font-bold">غير متوفر</span>':''}</div>`).join('');
             
@@ -1084,8 +1077,7 @@
             if(validOrders.length === 0) { tbody.innerHTML = '<tr><td colspan="4" class="text-center py-8 text-slate-400 font-bold">لا توجد طلبات</td></tr>'; return; }
             tbody.innerHTML = validOrders.sort((a,b)=>(b.timestamp||0)-(a.timestamp||0)).map(o => `<tr class="hover:bg-slate-50"><td class="px-6 py-4"><span class="font-bold block text-slate-800">${o.id}</span><span class="text-xs text-slate-400">${o.date||'-'}</span></td><td class="px-6 py-4"><span class="block font-bold text-slate-800">${o.customer?.name||'-'}</span><span class="text-xs text-slate-500">${o.customer?.whatsapp||'-'}</span></td><td class="px-6 py-4 font-black text-slate-900">${o.total ? parseFloat(o.total).toFixed(2) : '0.00'}</td><td class="px-6 py-4"><select onchange="db.ref('orders/'+'${o.id}').update({status: this.value}).then(()=>showToast('تم التحديث','success'))" class="bg-white border border-slate-200 text-sm rounded-lg px-3 py-2 font-bold outline-none text-slate-600 shadow-sm focus:border-primary">${ORDER_STATUSES.map(st=>`<option value="${st}" ${(o.status||'قيد الانتظار')===st?'selected':''}>${st}</option>`).join('')}</select></td></tr>`).join(''); 
         }
-
-          // Admin Products & Pagination
+ // Admin Products & Pagination
         function populateAdminBrandFilter() { const select = document.getElementById('admin-brand-filter'); const currentVal = select.value; const filters = new Set(); Object.values(state.products).forEach(p => { if(p.brand) filters.add(p.brand); else if(p.category) filters.add(p.category); }); let html = '<option value="">كل المنتجات</option>'; Array.from(filters).sort().forEach(f => { html += `<option value="${f}">${f}</option>`; }); select.innerHTML = html; select.value = currentVal; }
         function renderAdminProducts(resetPage = false) { 
             if(resetPage) adminCurrentPage = 1;
@@ -1159,7 +1151,7 @@
             if(imagesArray.length === 0) return showToast('يرجى إضافة صورة واحدة على الأقل', 'error');
             
             const existingP = state.products[document.getElementById('prod-id').value];
-            const isAvail = existingP ? (existingP.isAvailable !== false) : true; // الاحتفاظ بحالة التوفر أو الافتراضي متوفر
+            const isAvail = existingP ? (existingP.isAvailable !== false) : true;
 
             const p = { id: document.getElementById('prod-id').value, code: document.getElementById('prod-code').value, name: document.getElementById('prod-name').value, price: parseFloat(document.getElementById('prod-price').value), category: document.getElementById('prod-category').value, brand: document.getElementById('prod-brand').value, images: imagesArray, desc: document.getElementById('prod-desc').value, isAvailable: isAvail }; 
             db.ref('products/' + p.id).set(p).then(() => { closeModal('product-modal'); showToast('تم الحفظ', 'success'); }); 
